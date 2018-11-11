@@ -1,4 +1,4 @@
-package de.dreierschach.akka.coffeeomat.actor.theke;
+package de.dreierschach.akka.coffeeomat.actor.lager;
 
 import java.io.Serializable;
 import java.util.UUID;
@@ -8,7 +8,8 @@ import org.immutables.value.Value;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
 
-public class VerkaufsvorgangMessages {
+
+public class LagerMessages {
     
 	// Command (Impuls von außen + Seiteneffekte)
 	

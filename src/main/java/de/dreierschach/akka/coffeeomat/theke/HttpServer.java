@@ -1,4 +1,4 @@
-package de.dreierschach.akka.coffeeomat.httpserver;
+package de.dreierschach.akka.coffeeomat.theke;
 
 import static akka.http.javadsl.server.PathMatchers.uuidSegment;
 
@@ -29,10 +29,10 @@ import akka.pattern.PatternsCS;
 import akka.stream.ActorMaterializer;
 import akka.stream.Materializer;
 import akka.stream.javadsl.Flow;
-import de.dreierschach.akka.coffeeomat.persons.ImmutableGetPerson;
-import de.dreierschach.akka.coffeeomat.persons.ImmutablePersonData;
-import de.dreierschach.akka.coffeeomat.persons.ImmutableSetzeAlter;
-import de.dreierschach.akka.coffeeomat.persons.ImmutableUpdatePerson;
+import de.dreierschach.akka.coffeeomat.actor.theke.ImmutableGetPerson;
+import de.dreierschach.akka.coffeeomat.actor.theke.ImmutablePersonData;
+import de.dreierschach.akka.coffeeomat.actor.theke.ImmutableSetzeAlter;
+import de.dreierschach.akka.coffeeomat.actor.theke.ImmutableUpdatePerson;
 
 public class HttpServer extends AbstractActor {
     public static Props props(String host, int port, ActorRef persons) {

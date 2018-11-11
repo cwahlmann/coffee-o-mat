@@ -1,4 +1,4 @@
-package de.dreierschach.akka.coffeeomat.actor.theke;
+package de.dreierschach.akka.coffeeomat.actor.kasse;
 
 import java.util.NoSuchElementException;
 
@@ -11,14 +11,13 @@ import akka.actor.ReceiveTimeout;
 import akka.actor.Status;
 import akka.cluster.sharding.ShardRegion;
 import akka.persistence.AbstractPersistentActor;
-import de.dreierschach.akka.coffeeomat.persons.ImmutableGetPersonResponse;
 import scala.concurrent.duration.FiniteDuration;
 
-class VerkaufsvorgangEntity extends AbstractPersistentActor {
-	private final static Logger log = LoggerFactory.getLogger(VerkaufsvorgangEntity.class);
+class KasseEntity extends AbstractPersistentActor {
+	private final static Logger log = LoggerFactory.getLogger(KasseEntity.class);
 
 	static Props props() {
-		return Props.create(VerkaufsvorgangEntity.class, VerkaufsvorgangEntity::new);
+		return Props.create(KasseEntity.class, KasseEntity::new);
 	}
 
 	@Override
@@ -28,21 +27,21 @@ class VerkaufsvorgangEntity extends AbstractPersistentActor {
 
 	private ImmutableGetPersonResponse person;
 
-	private VerkaufsvorgangEntity() {
+	private KasseEntity() {
 		context().setReceiveTimeout(FiniteDuration.create(10, "s"));
 		person = ImmutableGetPersonResponse.builder().build();
 	}
 
 	@Override
 	public Receive createReceive() {
-		return receiveBuilder().match(VerkaufsvorgangMessages.GetPerson.class, this::onGet)
-				.match(VerkaufsvorgangMessages.UpdatePerson.class, this::onUpdate)
-				.match(VerkaufsvorgangMessages.CreatePerson.class, this::onCreate)
-				.match(VerkaufsvorgangMessages.SetzeAlter.class, this::onSetzeAlter)
+		return receiveBuilder().match(KasseMessages.GetPerson.class, this::onGet)
+				.match(KasseMessages.UpdatePerson.class, this::onUpdate)
+				.match(KasseMessages.CreatePerson.class, this::onCreate)
+				.match(KasseMessages.SetzeAlter.class, this::onSetzeAlter)
 				.matchEquals(ReceiveTimeout.getInstance(), msg -> passivate()).build();
 	}
 
-	private void onCreate(VerkaufsvorgangMessages.CreatePerson msg) {
+	private void onCreate(KasseMessages.CreatePerson msg) {
 		persist(ImmutablePersonUpdated.of(msg.name(), msg.address(), msg.entityId()), evt -> {
 			person = ImmutableGetPersonResponse.of(evt.name(), evt.address(), 0, evt.entityId());
 			sender().tell(person, self());
@@ -50,7 +49,7 @@ class VerkaufsvorgangEntity extends AbstractPersistentActor {
 		persist(ImmutableAlterGesetzt.of(0, msg.entityId()), evt -> {});
 	}
 
-	private void onUpdate(VerkaufsvorgangMessages.UpdatePerson msg) {
+	private void onUpdate(KasseMessages.UpdatePerson msg) {
 		if (person == null) {
 			sender().tell(new Status.Failure(new NoSuchElementException()), self());
 			passivate();
@@ -62,7 +61,7 @@ class VerkaufsvorgangEntity extends AbstractPersistentActor {
 		}
 	}
 
-	private void onSetzeAlter(VerkaufsvorgangMessages.SetzeAlter msg) {
+	private void onSetzeAlter(KasseMessages.SetzeAlter msg) {
 		if (person == null) {
 			sender().tell(new Status.Failure(new NoSuchElementException()), self());
 			passivate();
@@ -74,7 +73,7 @@ class VerkaufsvorgangEntity extends AbstractPersistentActor {
 		}
 	}
 
-	private void onGet(VerkaufsvorgangMessages.GetPerson msg) {
+	private void onGet(KasseMessages.GetPerson msg) {
 		if (person == null) {
 			sender().tell(new Status.Failure(new NoSuchElementException()), self());
 			passivate();
@@ -89,9 +88,9 @@ class VerkaufsvorgangEntity extends AbstractPersistentActor {
 	@Override
 	public Receive createReceiveRecover() {
 		return receiveBuilder()
-				.match(VerkaufsvorgangMessages.PersonUpdated.class,
+				.match(KasseMessages.PersonUpdated.class,
 						msg -> person = person.withName(msg.name()).withAddress(msg.address()))
-				.match(VerkaufsvorgangMessages.AlterGesetzt.class,
+				.match(KasseMessages.AlterGesetzt.class,
 						msg -> person = person.withAlter(msg.alter()))
 				.build();
 	}
