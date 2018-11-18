@@ -1,4 +1,4 @@
-package de.dreierschach.akka.coffeeomat.actor.lager;
+package de.dreierschach.akka.coffeeomat.actor.barista;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,19 +10,19 @@ import akka.cluster.sharding.ShardRegion;
 import akka.persistence.AbstractPersistentActor;
 import scala.concurrent.duration.FiniteDuration;
 
-class LagerEntity extends AbstractPersistentActor {
-	private final static Logger log = LoggerFactory.getLogger(LagerEntity.class);
+class BaristaEntity extends AbstractPersistentActor {
+	private final static Logger log = LoggerFactory.getLogger(BaristaEntity.class);
 
 	static Props props() {
-		return Props.create(LagerEntity.class, LagerEntity::new);
+		return Props.create(BaristaEntity.class, BaristaEntity::new);
 	}
 
 	@Override
 	public String persistenceId() {
-		return "lager-" + self().path().name();
+		return "barista-" + self().path().name();
 	}
 
-	private LagerEntity() {
+	private BaristaEntity() {
 		context().setReceiveTimeout(FiniteDuration.create(10, "s"));
 	}
 

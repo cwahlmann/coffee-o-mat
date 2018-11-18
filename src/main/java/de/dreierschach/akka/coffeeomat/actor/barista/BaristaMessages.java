@@ -1,17 +1,19 @@
-package de.dreierschach.akka.coffeeomat.actor.lager;
+package de.dreierschach.akka.coffeeomat.actor.barista;
 
 import java.io.Serializable;
 import java.util.UUID;
 
 import org.immutables.value.Value;
 
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
 
-public class LagerMessages {
+
+public class BaristaMessages {
     
 	// Command (Impuls von außen + Seiteneffekte)
 	
-    public interface LagerWithEntityId extends Serializable {
+    public interface BaristaWithEntityId extends Serializable {
         @Value.Parameter UUID entityId();
     }
 

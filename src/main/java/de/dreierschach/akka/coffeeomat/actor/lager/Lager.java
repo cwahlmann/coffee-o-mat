@@ -1,7 +1,5 @@
 package de.dreierschach.akka.coffeeomat.actor.lager;
 
-import java.util.UUID;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,12 +18,12 @@ public class Lager extends AbstractActor {
 
     final ShardRegion.MessageExtractor messageExtractor = new ShardRegion.HashCodeMessageExtractor(1000) {
         @Override public String entityId (Object message) {
-            return ((LagerMessages.WithEntityId) message).entityId().toString();
+            return ((LagerMessages.LagerWithEntityId) message).entityId().toString();
         }
     };
     
     final ActorRef shardRegion = ClusterSharding.get(context().system()).start(
-            "persons",
+            "lager",
             LagerEntity.props(),
             ClusterShardingSettings.create(context().system()),
             messageExtractor
@@ -35,13 +33,6 @@ public class Lager extends AbstractActor {
     @Override
     public Receive createReceive () {
         return receiveBuilder()
-                .match(LagerMessages.PersonData.class, this::onCreatePerson)
-                .match(LagerMessages.WithEntityId.class, msg -> shardRegion.forward(msg, context()))
                 .build();
-    }
-
-    private void onCreatePerson(LagerMessages.PersonData msg) {
-        final UUID entityId = UUID.randomUUID();
-        self().forward(ImmutableCreatePerson.of(msg.name(), msg.address(), entityId), context());
     }
 }
