@@ -29,11 +29,11 @@ import akka.pattern.PatternsCS;
 import akka.stream.ActorMaterializer;
 import akka.stream.Materializer;
 import akka.stream.javadsl.Flow;
-import de.dreierschach.akka.coffeeomat.actor.verwaltung.ImmutableBestellungData;
-import de.dreierschach.akka.coffeeomat.actor.verwaltung.ImmutableGetBestellung;
-import de.dreierschach.akka.coffeeomat.actor.verwaltung.ImmutableSetBestellungAbgebrochen;
-import de.dreierschach.akka.coffeeomat.actor.verwaltung.ImmutableSetBestellungBezahlt;
-import de.dreierschach.akka.coffeeomat.actor.verwaltung.ImmutableSetBestellungGeliefert;
+import de.dreierschach.akka.coffeeomat.actor.bedienung.ImmutableBestellungData;
+import de.dreierschach.akka.coffeeomat.actor.bedienung.ImmutableGetBestellung;
+import de.dreierschach.akka.coffeeomat.actor.bedienung.ImmutableSetBestellungAbgebrochen;
+import de.dreierschach.akka.coffeeomat.actor.bedienung.ImmutableSetBestellungBezahlt;
+import de.dreierschach.akka.coffeeomat.actor.bedienung.ImmutableSetBestellungGeliefert;
 
 public class Theke extends AbstractActor {
 

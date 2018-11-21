@@ -11,7 +11,6 @@ import akka.actor.Props;
 import akka.cluster.sharding.ClusterSharding;
 import akka.cluster.sharding.ClusterShardingSettings;
 import akka.cluster.sharding.ShardRegion;
-import de.dreierschach.akka.coffeeomat.actor.verwaltung.ImmutableCreateBestellung;
 
 public class Bedienung extends AbstractActor {
 	private final static Logger log = LoggerFactory.getLogger(Bedienung.class);
