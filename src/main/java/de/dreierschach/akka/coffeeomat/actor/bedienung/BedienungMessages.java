@@ -7,7 +7,7 @@ import org.immutables.value.Value;
 
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
-import de.dreierschach.akka.coffeeomat.common.Kaffeesorte;
+import de.dreierschach.akka.coffeeomat.actor.barista.BaristaMessages;
 
 
 
@@ -15,7 +15,7 @@ public class BedienungMessages {
     
 	// Command (Impuls von außen + Seiteneffekte)
 	
-    public interface BestellungWithEntityId extends Serializable {
+    public interface WithEntityId extends Serializable {
         @Value.Parameter UUID entityId();
     }
     
@@ -23,53 +23,59 @@ public class BedienungMessages {
     @Value.Immutable
     public interface BestellungData {
         @Value.Parameter String kunde();
-        @Value.Parameter Kaffeesorte produkt();
+        @Value.Parameter String produkt();
     }
     
     @JsonSerialize
     @Value.Immutable
-    public interface CreateBestellung extends BestellungWithEntityId {
+    public interface CreateBestellung extends WithEntityId {
         @Value.Parameter String kunde();
-        @Value.Parameter Kaffeesorte produkt();    	
+        @Value.Parameter String produkt();    	
     }
 
     @JsonSerialize
     @Value.Immutable
-    public interface SetBestellungValidiert extends BestellungWithEntityId {
+    public interface PruefeBestellung extends WithEntityId {
+        @Value.Parameter BaristaMessages.CreateRezept rezept();    	
     }
 
     @JsonSerialize
     @Value.Immutable
-    public interface SetBestellungBezahlt extends BestellungWithEntityId {
+    public interface SetBestellungValidiert extends WithEntityId {
     }
 
     @JsonSerialize
     @Value.Immutable
-    public interface SetBestellungZubereitet extends BestellungWithEntityId {
+    public interface SetBestellungBezahlt extends WithEntityId {
     }
 
     @JsonSerialize
     @Value.Immutable
-    public interface SetBestellungGeliefert extends BestellungWithEntityId {
+    public interface SetBestellungZubereitet extends WithEntityId {
     }
 
     @JsonSerialize
     @Value.Immutable
-    public interface SetBestellungAbgebrochen extends BestellungWithEntityId {
+    public interface SetBestellungGeliefert extends WithEntityId {
     }
 
     @JsonSerialize
     @Value.Immutable
-    public interface GetBestellung extends BestellungWithEntityId {
+    public interface SetBestellungAbgebrochen extends WithEntityId {
+    }
+
+    @JsonSerialize
+    @Value.Immutable
+    public interface GetBestellung extends WithEntityId {
     }
 
     // Events (Beschreibt den Fakt)
     
     @JsonSerialize
     @Value.Immutable
-    interface BestellungCreated extends BestellungWithEntityId {
+    interface BestellungCreated extends WithEntityId {
         @Value.Parameter String kunde();
-        @Value.Parameter Kaffeesorte produkt();
+        @Value.Parameter String produkt();
         @Value.Parameter boolean validiert();
         @Value.Parameter boolean bezahlt();
         @Value.Parameter boolean zubereitet();
@@ -79,26 +85,26 @@ public class BedienungMessages {
     
     @JsonSerialize
     @Value.Immutable
-    interface BestellungValidiert extends BestellungWithEntityId {
+    interface BestellungValidiert extends WithEntityId {
     }
 
     @JsonSerialize
     @Value.Immutable
-    interface BestellungBezahlt extends BestellungWithEntityId {
+    interface BestellungBezahlt extends WithEntityId {
     }
     
     @JsonSerialize
     @Value.Immutable
-    interface BestellungZubereitet extends BestellungWithEntityId {
+    interface BestellungZubereitet extends WithEntityId {
     }
 
     @JsonSerialize
     @Value.Immutable
-    interface BestellungGeliefert extends BestellungWithEntityId {
+    interface BestellungGeliefert extends WithEntityId {
     }
 
     @JsonSerialize
     @Value.Immutable
-    interface BestellungAbgebrochen extends BestellungWithEntityId {
+    interface BestellungAbgebrochen extends WithEntityId {
     }
 }

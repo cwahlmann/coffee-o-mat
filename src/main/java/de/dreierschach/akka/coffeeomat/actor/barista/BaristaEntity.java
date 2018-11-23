@@ -22,6 +22,8 @@ class BaristaEntity extends AbstractPersistentActor {
 		return "barista-" + self().path().name();
 	}
 
+	private ImmutableCreateRezept rezept = null;
+	
 	private BaristaEntity() {
 		context().setReceiveTimeout(FiniteDuration.create(10, "s"));
 	}
@@ -29,6 +31,9 @@ class BaristaEntity extends AbstractPersistentActor {
 	@Override
 	public Receive createReceive() {
 		return receiveBuilder()
+				.match(BaristaMessages.CreateRezept.class, this::createRezept)
+				.match(BaristaMessages.GetRezept.class, this::getRezept)
+				.match(BaristaMessages.BereiteRezeptZu.class, this::bereiteRezeptZu)
 				.matchEquals(ReceiveTimeout.getInstance(), msg -> passivate()).build();
 	}
 
@@ -39,6 +44,20 @@ class BaristaEntity extends AbstractPersistentActor {
 	@Override
 	public Receive createReceiveRecover() {
 		return receiveBuilder()
+				.match(BaristaMessages.CreateRezept.class, this::createRezept)
 				.build();
 	}
+	
+	private void createRezept(BaristaMessages.CreateRezept msg) {
+		// persist
+	}
+
+	private void getRezept(BaristaMessages.GetRezept msg) {
+		sender().tell(rezept, self());
+	}
+	
+	private void bereiteRezeptZu(BaristaMessages.BereiteRezeptZu msg) {
+		
+	}
+
 }

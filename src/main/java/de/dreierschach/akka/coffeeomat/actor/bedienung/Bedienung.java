@@ -1,6 +1,10 @@
 package de.dreierschach.akka.coffeeomat.actor.bedienung;
 
 import java.util.UUID;
+import java.util.Map.Entry;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,6 +15,10 @@ import akka.actor.Props;
 import akka.cluster.sharding.ClusterSharding;
 import akka.cluster.sharding.ClusterShardingSettings;
 import akka.cluster.sharding.ShardRegion;
+import akka.pattern.PatternsCS;
+import de.dreierschach.akka.coffeeomat.actor.barista.BaristaMessages;
+import de.dreierschach.akka.coffeeomat.actor.lager.ImmutablePruefeZutat;
+import de.dreierschach.akka.coffeeomat.actor.lager.LagerMessages;
 
 public class Bedienung extends AbstractActor {
 	private final static Logger log = LoggerFactory.getLogger(Bedienung.class);
@@ -21,7 +29,7 @@ public class Bedienung extends AbstractActor {
 
     final ShardRegion.MessageExtractor messageExtractor = new ShardRegion.HashCodeMessageExtractor(1000) {
         @Override public String entityId (Object message) {
-            return ((BedienungMessages.BestellungWithEntityId) message).entityId().toString();
+            return ((BedienungMessages.WithEntityId) message).entityId().toString();
         }
     };
     
@@ -40,7 +48,7 @@ public class Bedienung extends AbstractActor {
     public Receive createReceive () {
         return receiveBuilder()
                 .match(BedienungMessages.BestellungData.class, this::onCreateBestellung)
-                .match(BedienungMessages.BestellungWithEntityId.class, msg -> shardRegion.forward(msg, context()))
+                .match(BedienungMessages.WithEntityId.class, msg -> shardRegion.forward(msg, context()))
                 .build();
     }
 
@@ -49,4 +57,5 @@ public class Bedienung extends AbstractActor {
         log.info("Neue EntityId {} für Bestellung [Kunde: {}, Produkt: {}] vergeben.", entityId, msg.kunde(), msg.produkt());
         self().forward(ImmutableCreateBestellung.of(msg.kunde(), msg.produkt(), entityId), context());
     }
+    
 }
