@@ -21,7 +21,7 @@ public class BedienungMessages {
     
     @JsonSerialize
     @Value.Immutable
-    public interface BestellungData {
+    public interface BestellungData extends Serializable {
         @Value.Parameter String kunde();
         @Value.Parameter String produkt();
     }

@@ -24,7 +24,7 @@ class BedienungEntity extends AbstractPersistentActor {
 	private final static Logger log = LoggerFactory.getLogger(BedienungEntity.class);
 
 	static Props props(ActorRef lager, ActorRef barista) {
-		return Props.create(BedienungEntity.class, new BedienungEntity(lager, barista));
+		return Props.create(BedienungEntity.class, () -> new BedienungEntity(lager, barista));
 	}
 
 	private final static ObjectMapper mapper = new ObjectMapper();

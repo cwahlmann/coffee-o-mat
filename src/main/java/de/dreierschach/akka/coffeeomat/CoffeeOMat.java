@@ -22,8 +22,11 @@ public class CoffeeOMat {
         
         log.info("-------- Erzeuge ActorRefs");
         ActorRef lager = system.actorOf(Lager.props(), "lager");
+        log.info("-------- Erzeuge ActorRefs2");        
         ActorRef barista = system.actorOf(Barista.props(lager), "barista");
+        log.info("-------- Erzeuge ActorRefs3");
         ActorRef bedienung = system.actorOf(Bedienung.props(lager, barista), "bedienung");
+        log.info("-------- Erzeuge ActorRefs4");
     	system.actorOf(Theke.props(httpHost, httpPort, bedienung), "theke");
     	
     	log.info("-------- Fülle Lager");

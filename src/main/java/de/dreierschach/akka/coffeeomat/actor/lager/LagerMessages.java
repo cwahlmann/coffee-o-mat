@@ -1,5 +1,6 @@
 package de.dreierschach.akka.coffeeomat.actor.lager;
 
+import java.io.Serializable;
 import java.util.Map;
 import java.util.UUID;
 
@@ -15,46 +16,46 @@ public class LagerMessages {
 
 	@JsonSerialize
     @Value.Immutable
-    public interface Bestand {
+    public interface Bestand extends Serializable {
     	@Value.Parameter Map<String, Integer> zutaten();
     }
 	
     @JsonSerialize
     @Value.Immutable
-    public interface AddZutat {
+    public interface AddZutat extends Serializable {
     	@Value.Parameter String name();
     	@Value.Parameter int anzahl();
     }
 	
     @JsonSerialize
     @Value.Immutable
-    public interface GetZutat {
+    public interface GetZutat extends Serializable {
     	@Value.Parameter String name();
     }
 
     @JsonSerialize
     @Value.Immutable
-    public interface GetBestand {
+    public interface GetBestand extends Serializable {
     	@Value.Parameter String name();
     }
 
     @JsonSerialize
     @Value.Immutable
-    public interface Zutat {
+    public interface Zutat extends Serializable {
     	@Value.Parameter String name();
     	@Value.Parameter int anzahl();
     }
 
     @JsonSerialize
     @Value.Immutable
-    public interface PruefeZutaten {
+    public interface PruefeZutaten extends Serializable {
     	@Value.Parameter UUID bestellungId();
     	@Value.Parameter Map<String, Integer> zutaten();
     }
 
     @JsonSerialize
     @Value.Immutable
-    public interface EntnehmeZutaten {
+    public interface EntnehmeZutaten extends Serializable {
     	@Value.Parameter UUID bestellungId();
     	@Value.Parameter Map<String, Integer> zutaten();
     }
@@ -63,15 +64,23 @@ public class LagerMessages {
     
     @JsonSerialize
     @Value.Immutable
-    public interface ZutatenGeprueft {
+    public interface ZutatAdded extends Serializable {
+    	@Value.Parameter String name();
+    	@Value.Parameter int anzahl();
+    }
+
+    @JsonSerialize
+    @Value.Immutable
+    public interface ZutatenGeprueft extends Serializable {
     	@Value.Parameter UUID bestellungId();
     	@Value.Parameter boolean erfolgreich();
     }
     
     @JsonSerialize
     @Value.Immutable
-    public interface ZutatenEntnommen {
+    public interface ZutatenEntnommen extends Serializable {
     	@Value.Parameter UUID bestellungId();
+    	@Value.Parameter Map<String, Integer> zutaten();
     	@Value.Parameter boolean erfolgreich();
     }
 }

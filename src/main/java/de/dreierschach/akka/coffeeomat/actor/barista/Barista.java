@@ -20,7 +20,7 @@ public class Barista extends AbstractPersistentActor {
 	private ActorRef lager;
 
 	public static Props props(ActorRef lager) {
-		return Props.create(Barista.class, new Barista(lager));
+		return Props.create(Barista.class, () -> new Barista(lager));
 	}
 
 	public Barista(ActorRef lager) {
@@ -48,21 +48,21 @@ public class Barista extends AbstractPersistentActor {
 	@Override
 	public Receive createReceiveRecover() {
 		return receiveBuilder()
-				.match(BaristaMessages.AddRezept.class, this::onAddRezept)
+				.match(BaristaMessages.RezeptAdded.class, this::onRezeptAdded)
 				.build();
 	}
 
 	private void onAddRezept(BaristaMessages.AddRezept msg) {
-		persist(msg, evt -> {
+		persist(ImmutableRezeptAdded.builder().name(msg.name()).preis(msg.preis()).putAllZutaten(msg.zutaten()).build(), evt -> {
 			speisekarte = ImmutableSpeisekarte.builder().putAllRezepte(speisekarte.rezepte())
-					.putRezepte(msg.name(), msg).build();
+					.putRezepte(msg.name(), ImmutableRezeptAdded.builder().name(msg.name()).preis(msg.preis()).putAllZutaten(msg.zutaten()).build()).build();
 			log.info("==> Neues Rezept hinzugefügt: {}", toJson(msg));
 			sender().tell(speisekarte, self());
 		});
 	}
 
 	private void onGetRezept(BaristaMessages.GetRezept msg) {
-		BaristaMessages.AddRezept rezept = speisekarte.rezepte().getOrDefault(msg.name(), ImmutableAddRezept.builder().build()); 
+		BaristaMessages.RezeptAdded rezept = speisekarte.rezepte().getOrDefault(msg.name(), ImmutableRezeptAdded.builder().build()); 
 		sender().tell(rezept, self());
 		log.info("--- Rezept abgerufen: {}", toJson(rezept));
 	}
@@ -80,7 +80,7 @@ public class Barista extends AbstractPersistentActor {
 				log.error(">>> Rezept ist nicht vorhanden {}", toJson(msg.name()));
 			return;
 		}
-		BaristaMessages.AddRezept rezept = speisekarte.rezepte().get(msg.name());
+		BaristaMessages.RezeptAdded rezept = speisekarte.rezepte().get(msg.name());
 		PatternsCS.ask(lager, ImmutablePruefeZutaten.builder().bestellungId(msg.bestellungId())
 				.putAllZutaten(rezept.zutaten()).build(), 1000)
 		.whenComplete((evt, throwable) -> {
@@ -98,7 +98,7 @@ public class Barista extends AbstractPersistentActor {
 			log.error(">>> Rezept {} kann nicht zubereitet werden, es ist nicht vorhanden", toJson(msg.name()));
 			return;
 		}
-		BaristaMessages.AddRezept rezept = speisekarte.rezepte().get(msg.name());
+		BaristaMessages.RezeptAdded rezept = speisekarte.rezepte().get(msg.name());
 		PatternsCS.ask(lager, ImmutableEntnehmeZutaten.builder().bestellungId(msg.bestellungId())
 				.putAllZutaten(rezept.zutaten()).build(), 1000)
 		.whenComplete((evt, throwable) -> {
@@ -106,6 +106,13 @@ public class Barista extends AbstractPersistentActor {
 			sender().tell(ImmutableRezeptZubereitet.builder().bestellungId(result.bestellungId()).erfolgreich(result.erfolgreich()), self());
 			log.info("==> Rezept {} wurde zubereitet: {}", msg.name(), result.erfolgreich());
 		});
+	}
+
+	private void onRezeptAdded(BaristaMessages.RezeptAdded msg) {
+		speisekarte = ImmutableSpeisekarte.builder().putAllRezepte(speisekarte.rezepte())
+				.putRezepte(msg.name(), msg).build();
+		log.info("==> REPLAY: Neues Rezept hinzugefügt: {}", toJson(msg));
+		sender().tell(speisekarte, self());
 	}
 
 	// util

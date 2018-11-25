@@ -18,7 +18,7 @@ public class Bedienung extends AbstractActor {
 	private final static Logger log = LoggerFactory.getLogger(Bedienung.class);
 
 	public static Props props(ActorRef lager, ActorRef barista) {
-        return Props.create(Bedienung.class, lager, barista);
+        return Props.create(Bedienung.class, () -> new Bedienung(lager, barista));
     }
 
     final ShardRegion.MessageExtractor messageExtractor = new ShardRegion.HashCodeMessageExtractor(1000) {
