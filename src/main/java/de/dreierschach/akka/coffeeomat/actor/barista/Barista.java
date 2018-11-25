@@ -3,42 +3,122 @@ package de.dreierschach.akka.coffeeomat.actor.barista;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import akka.actor.AbstractActor;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import akka.actor.ActorRef;
 import akka.actor.Props;
-import akka.cluster.sharding.ClusterSharding;
-import akka.cluster.sharding.ClusterShardingSettings;
-import akka.cluster.sharding.ShardRegion;
-import de.dreierschach.akka.coffeeomat.actor.bedienung.BedienungMessages;
-import de.dreierschach.akka.coffeeomat.actor.bedienung.ImmutableCreateBestellung;
+import akka.pattern.PatternsCS;
+import akka.persistence.AbstractPersistentActor;
+import de.dreierschach.akka.coffeeomat.actor.lager.ImmutableEntnehmeZutaten;
+import de.dreierschach.akka.coffeeomat.actor.lager.ImmutablePruefeZutaten;
+import de.dreierschach.akka.coffeeomat.actor.lager.LagerMessages;
 
-public class Barista extends AbstractActor {
+public class Barista extends AbstractPersistentActor {
 	private final static Logger log = LoggerFactory.getLogger(Barista.class);
 
-	public static Props props() {
-		return Props.create(Barista.class, Barista::new);
+	private ActorRef lager;
+
+	public static Props props(ActorRef lager) {
+		return Props.create(Barista.class, new Barista(lager));
 	}
 
-	final ShardRegion.MessageExtractor messageExtractor = new ShardRegion.HashCodeMessageExtractor(1000) {
-		@Override
-		public String entityId(Object message) {
-			return ((BaristaMessages.WithEntityId) message).entityId().toString();
-		}
-	};
+	public Barista(ActorRef lager) {
+		this.lager = lager;
+	}
 
-	final ActorRef shardRegion = ClusterSharding.get(context().system()).start("barista", BaristaEntity.props(),
-			ClusterShardingSettings.create(context().system()), messageExtractor);
+	@Override
+	public String persistenceId() {
+		return "barista-" + self().path().name();
+	}
+
+	private ImmutableSpeisekarte speisekarte = ImmutableSpeisekarte.builder().build();
 
 	@Override
 	public Receive createReceive() {
 		return receiveBuilder()
-				.match(BaristaMessages.AddRezeptData.class, this::onAddRezept)
-				.match(BaristaMessages.WithEntityId.class, msg -> shardRegion.forward(msg, context())).build();
+				.match(BaristaMessages.AddRezept.class, this::onAddRezept)
+				.match(BaristaMessages.GetRezept.class, this::onGetRezept)
+				.match(BaristaMessages.GetRezeptliste.class, this::onGetRezeptliste)
+				.match(BaristaMessages.PruefeRezept.class, this::onPruefeRezept)
+				.match(BaristaMessages.BereiteRezeptZu.class, this::onBereiteRezeptZu)
+				.build();
 	}
 
-	private void onAddRezept(BaristaMessages.AddRezeptData msg) {
-		self().forward(ImmutableCreateRezept.builder().entityId(msg.name()).name(msg.name()).preis(msg.preis())
-				.putAllZutaten(msg.zutaten()).build(), context());
+	@Override
+	public Receive createReceiveRecover() {
+		return receiveBuilder()
+				.match(BaristaMessages.AddRezept.class, this::onAddRezept)
+				.build();
+	}
+
+	private void onAddRezept(BaristaMessages.AddRezept msg) {
+		persist(msg, evt -> {
+			speisekarte = ImmutableSpeisekarte.builder().putAllRezepte(speisekarte.rezepte())
+					.putRezepte(msg.name(), msg).build();
+			log.info("==> Neues Rezept hinzugefügt: {}", toJson(msg));
+			sender().tell(speisekarte, self());
+		});
+	}
+
+	private void onGetRezept(BaristaMessages.GetRezept msg) {
+		BaristaMessages.AddRezept rezept = speisekarte.rezepte().getOrDefault(msg.name(), ImmutableAddRezept.builder().build()); 
+		sender().tell(rezept, self());
+		log.info("--- Rezept abgerufen: {}", toJson(rezept));
+	}
+
+	private void onGetRezeptliste(BaristaMessages.GetRezeptliste msg) {
+		sender().tell(speisekarte, self());
+		log.info("--- Rezeptliste abgerufen: {}", toJson(speisekarte));
+	}
+
+	private void onPruefeRezept(BaristaMessages.PruefeRezept msg) {
+		if (!speisekarte.rezepte().containsKey(msg.name())) {
+			sender().tell(
+					ImmutableRezeptGeprueft.builder().bestellungId(msg.bestellungId()).erfolgreich(false).build(),
+					self());
+				log.error(">>> Rezept ist nicht vorhanden {}", toJson(msg.name()));
+			return;
+		}
+		BaristaMessages.AddRezept rezept = speisekarte.rezepte().get(msg.name());
+		PatternsCS.ask(lager, ImmutablePruefeZutaten.builder().bestellungId(msg.bestellungId())
+				.putAllZutaten(rezept.zutaten()).build(), 1000)
+		.whenComplete((evt, throwable) -> {
+			LagerMessages.ZutatenGeprueft result = (LagerMessages.ZutatenGeprueft)evt;
+			sender().tell(ImmutableRezeptGeprueft.builder().bestellungId(result.bestellungId()).erfolgreich(result.erfolgreich()), self());
+			log.info("==> Rezept {} wurde geprüft: {}", msg.name(), result.erfolgreich());
+		});
+	}
+
+	private void onBereiteRezeptZu(BaristaMessages.BereiteRezeptZu msg) {
+		if (!speisekarte.rezepte().containsKey(msg.name())) {
+			sender().tell(
+					ImmutableRezeptZubereitet.builder().bestellungId(msg.bestellungId()).erfolgreich(false).build(),
+					self());
+			log.error(">>> Rezept {} kann nicht zubereitet werden, es ist nicht vorhanden", toJson(msg.name()));
+			return;
+		}
+		BaristaMessages.AddRezept rezept = speisekarte.rezepte().get(msg.name());
+		PatternsCS.ask(lager, ImmutableEntnehmeZutaten.builder().bestellungId(msg.bestellungId())
+				.putAllZutaten(rezept.zutaten()).build(), 1000)
+		.whenComplete((evt, throwable) -> {
+			LagerMessages.ZutatenEntnommen result = (LagerMessages.ZutatenEntnommen)evt;
+			sender().tell(ImmutableRezeptZubereitet.builder().bestellungId(result.bestellungId()).erfolgreich(result.erfolgreich()), self());
+			log.info("==> Rezept {} wurde zubereitet: {}", msg.name(), result.erfolgreich());
+		});
+	}
+
+	// util
+
+	private final static ObjectMapper mapper = new ObjectMapper();
+
+	private String toJson(Object o) {
+		try {
+			return mapper.writeValueAsString(o);
+		} catch (JsonProcessingException e) {
+			log.error("--==>> Fehler beim mapping", e);
+			return "";
+		}
 	}
 
 }

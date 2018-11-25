@@ -26,17 +26,13 @@ public class BedienungMessages {
         @Value.Parameter String produkt();
     }
     
+    // 
+    
     @JsonSerialize
     @Value.Immutable
     public interface CreateBestellung extends WithEntityId {
         @Value.Parameter String kunde();
         @Value.Parameter String produkt();    	
-    }
-
-    @JsonSerialize
-    @Value.Immutable
-    public interface PruefeBestellung extends WithEntityId {
-        @Value.Parameter BaristaMessages.CreateRezept rezept();    	
     }
 
     @JsonSerialize

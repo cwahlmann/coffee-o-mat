@@ -1,55 +1,107 @@
 package de.dreierschach.akka.coffeeomat.actor.lager;
 
+import java.util.stream.Collectors;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.collect.ImmutableSet;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
-import akka.actor.AbstractActor;
-import akka.actor.ActorRef;
 import akka.actor.Props;
-import akka.cluster.sharding.ClusterSharding;
-import akka.cluster.sharding.ClusterShardingSettings;
-import akka.cluster.sharding.ShardRegion;
+import akka.actor.AbstractActor.Receive;
+import akka.persistence.AbstractPersistentActor;
 
-public class Lager extends AbstractActor {
+public class Lager extends AbstractPersistentActor {
 	private final static Logger log = LoggerFactory.getLogger(Lager.class);
 
 	public static Props props() {
 		return Props.create(Lager.class, Lager::new);
 	}
 
-	final ShardRegion.MessageExtractor messageExtractor = new ShardRegion.HashCodeMessageExtractor(1000) {
-		@Override
-		public String entityId(Object message) {
-			return ((LagerMessages.WithEntityId) message).entityId().toString();
-		}
-	};
+	@Override
+	public String persistenceId() {
+		return "lager-" + self().path().name();
+	}
 
-	final ActorRef shardRegion = ClusterSharding.get(context().system()).start("lager", LagerEntity.props(),
-			ClusterShardingSettings.create(context().system()), messageExtractor);
-
-	private ImmutableZutatenliste zutatenliste = ImmutableZutatenliste.builder().build();
+	private ImmutableBestand bestand = ImmutableBestand.builder().build();
 
 	@Override
 	public Receive createReceive() {
 		return receiveBuilder()
-				.match(LagerMessages.AddZutatData.class, this::onAddZutat)
-				.match(LagerMessages.GetZutatData.class, this::onGetZutat)
-				.match(LagerMessages.WithEntityId.class, msg -> shardRegion.forward(msg, context()))
+				.match(LagerMessages.AddZutat.class, this::onAddZutat)
+				.match(LagerMessages.GetBestand.class, this::onGetBestand)
+				.match(LagerMessages.GetZutat.class, this::onGetZutat)
+				.match(LagerMessages.PruefeZutaten.class, this::onPruefeZutaten)
+				.match(LagerMessages.EntnehmeZutaten.class, this::onEntnehmeZutaten)
 				.build();
 	}
 
-	private void onAddZutat(LagerMessages.AddZutatData msg) {
-		String entityId = msg.name();
-		log.info("Neue EntityId {} für Zutat [Name: {}, Anzahl: {}] vergeben.", entityId, msg.name(), msg.anzahl());
-		zutatenliste = zutatenliste.withZutatenliste(
-				ImmutableSet.<String>builder().addAll(zutatenliste.zutatenliste()).add(entityId).build());
-		self().forward(ImmutableAddZutat.of(msg.anzahl(), entityId), context());
+	@Override
+	public Receive createReceiveRecover() {
+		return receiveBuilder()
+				.match(LagerMessages.AddZutat.class, this::onAddZutat)
+				.match(LagerMessages.EntnehmeZutaten.class, this::onEntnehmeZutaten)
+				.build();
 	}
 
-	private void onGetZutat(LagerMessages.GetZutatData msg) {
-		self().forward(ImmutableGetZutat.of(msg.name()), context());
+	private void onAddZutat(LagerMessages.AddZutat msg) {
+		int anzahl = bestand.zutaten().getOrDefault(msg.name(), 0) + msg.anzahl();
+		persist(msg, evt -> {
+			bestand = ImmutableBestand.builder().putAllZutaten(bestand.zutaten()).putZutaten(msg.name(), anzahl).build();
+			log.info("==> Fuege {} mal {} hinzu. Bestand ist jetzt {}.", msg.anzahl(), msg.name(), toJson(bestand.zutaten()));
+			sender().tell(bestand, self());
+		});
+	}
+
+	private void onGetZutat(LagerMessages.GetZutat msg) {
+		int anzahl = bestand.zutaten().getOrDefault(msg.name(), 0);
+		ImmutableZutat zutat = ImmutableZutat.builder().name(msg.name()).anzahl(anzahl).build(); 
+		sender().tell(zutat, self());
+		log.info("--- Zutat abgerufen {}", toJson(zutat));
+	}
+
+	private void onGetBestand(LagerMessages.GetBestand msg) {
+		sender().tell(bestand, self());
+		log.info("--- Bestand abgerufen {}", toJson(bestand));
+	}
+
+	private void onPruefeZutaten(LagerMessages.PruefeZutaten msg) {
+		boolean erfolgreich = !msg.zutaten().entrySet().stream()
+			.filter(e -> bestand.zutaten().getOrDefault(e.getKey(), 0) < e.getValue()).findAny().isPresent();
+		log.info("==> Zutaten {} geprüft: {}", toJson(msg.zutaten()), erfolgreich);
+		sender().tell(ImmutableZutatenGeprueft.builder().bestellungId(msg.bestellungId()).erfolgreich(erfolgreich).build(), self());
+	}
+
+	private void onEntnehmeZutaten(LagerMessages.EntnehmeZutaten msg) {
+		boolean erfolgreich = !msg.zutaten().entrySet().stream()
+			.filter(e -> bestand.zutaten().getOrDefault(e.getKey(), 0) < e.getValue()).findAny().isPresent();
+		if (erfolgreich) {
+			persist(msg, evt -> {
+				bestand = ImmutableBestand.builder().putAllZutaten(
+						bestand.zutaten().entrySet().stream().collect(Collectors.toMap(
+							e -> e.getKey(), e -> e.getValue() - msg.zutaten().getOrDefault(e.getKey(), 0)
+						))).build();
+				log.info("==> Zutaten {} erfolgreich entnommen, Bestand ist jetzt {}", toJson(msg.zutaten()), toJson(bestand.zutaten()));
+				sender().tell(ImmutableZutatenEntnommen.builder().bestellungId(msg.bestellungId()).erfolgreich(true).build(), self());
+			});
+		} else {
+			log.error(">>> Zutaten {} konnten nicht erfolgreich entnommen werden", toJson(msg.zutaten()));
+			sender().tell(ImmutableZutatenEntnommen.builder().bestellungId(msg.bestellungId()).erfolgreich(false).build(), self());
+		}
+	}
+	
+	// util
+	
+	private final static ObjectMapper mapper = new ObjectMapper();
+
+	private String toJson(Object o) {
+		try {
+			return mapper.writeValueAsString(o);
+		} catch (JsonProcessingException e) {
+			log.error("--==>> Fehler beim mapping", e);
+			return "";
+		}
 	}
 
 }
