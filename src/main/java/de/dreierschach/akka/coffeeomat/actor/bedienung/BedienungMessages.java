@@ -33,6 +33,11 @@ public class BedienungMessages {
     public interface CreateBestellung extends WithEntityId {
         @Value.Parameter String kunde();
         @Value.Parameter String produkt();    	
+        @Value.Parameter boolean validiert();
+        @Value.Parameter boolean bezahlt();
+        @Value.Parameter boolean zubereitet();
+        @Value.Parameter boolean geliefert();
+        @Value.Parameter boolean abgebrochen();
     }
 
     @JsonSerialize
@@ -66,41 +71,4 @@ public class BedienungMessages {
     }
 
     // Events (Beschreibt den Fakt)
-    
-    @JsonSerialize
-    @Value.Immutable
-    interface BestellungCreated extends WithEntityId {
-        @Value.Parameter String kunde();
-        @Value.Parameter String produkt();
-        @Value.Parameter boolean validiert();
-        @Value.Parameter boolean bezahlt();
-        @Value.Parameter boolean zubereitet();
-        @Value.Parameter boolean geliefert();
-        @Value.Parameter boolean abgebrochen();
-    }
-    
-    @JsonSerialize
-    @Value.Immutable
-    interface BestellungValidiert extends WithEntityId {
-    }
-
-    @JsonSerialize
-    @Value.Immutable
-    interface BestellungBezahlt extends WithEntityId {
-    }
-    
-    @JsonSerialize
-    @Value.Immutable
-    interface BestellungZubereitet extends WithEntityId {
-    }
-
-    @JsonSerialize
-    @Value.Immutable
-    interface BestellungGeliefert extends WithEntityId {
-    }
-
-    @JsonSerialize
-    @Value.Immutable
-    interface BestellungAbgebrochen extends WithEntityId {
-    }
 }

@@ -16,7 +16,7 @@ public class CoffeeOMat {
     private static final Logger log = LoggerFactory.getLogger(CoffeeOMat.class);
 
     public static void main (String[] args) throws InterruptedException {
-        final ActorSystem system = ActorSystem.create("coffee-o-mat");
+        final ActorSystem system = ActorSystem.create("coffeeomat");
         final String httpHost = system.settings().config().getString("coffeeomat.http-server.host");
         final int httpPort = system.settings().config().getInt("coffeeomat.http-server.port");
         
@@ -29,16 +29,16 @@ public class CoffeeOMat {
         log.info("-------- Erzeuge ActorRefs4");
     	system.actorOf(Theke.props(httpHost, httpPort, bedienung), "theke");
     	
-    	log.info("-------- Fülle Lager");
-        lager.tell(ImmutableAddZutat.of("Bohnen", 150), system.lookupRoot());
-        lager.tell(ImmutableAddZutat.of("Milch", 1000), system.lookupRoot());
-        lager.tell(ImmutableAddZutat.of("Zucker", 1000), system.lookupRoot());
-        
-        log.info("-------- Rezepte für den Barista");
-        barista.tell(ImmutableAddRezept.builder().name("Kaffee klein").putZutaten("Bohnen", 50).preis(1.75).build(), system.lookupRoot());
-        barista.tell(ImmutableAddRezept.builder().name("Kaffee mittel").putZutaten("Bohnen", 75).preis(2.49).build(), system.lookupRoot());
-        barista.tell(ImmutableAddRezept.builder().name("Kaffee gross").putZutaten("Bohnen", 120).preis(3.30).build(), system.lookupRoot());
-        barista.tell(ImmutableAddRezept.builder().name("Expresso").putZutaten("Bohnen", 50).putZutaten("Zucker", 20).preis(2.25).build(), system.lookupRoot());
-        barista.tell(ImmutableAddRezept.builder().name("Latte Macchiato").putZutaten("Bohnen", 60).putZutaten("Milch", 100).preis(3.79).build(), system.lookupRoot());
+//    	log.info("-------- Fülle Lager");
+//        lager.tell(ImmutableAddZutat.of("Bohnen", 150), system.lookupRoot());
+//        lager.tell(ImmutableAddZutat.of("Milch", 1000), system.lookupRoot());
+//        lager.tell(ImmutableAddZutat.of("Zucker", 1000), system.lookupRoot());
+//        
+//        log.info("-------- Rezepte für den Barista");
+//        barista.tell(ImmutableAddRezept.builder().name("Kaffee klein").putZutaten("Bohnen", 50).preis(1.75).build(), system.lookupRoot());
+//        barista.tell(ImmutableAddRezept.builder().name("Kaffee mittel").putZutaten("Bohnen", 75).preis(2.49).build(), system.lookupRoot());
+//        barista.tell(ImmutableAddRezept.builder().name("Kaffee gross").putZutaten("Bohnen", 120).preis(3.30).build(), system.lookupRoot());
+//        barista.tell(ImmutableAddRezept.builder().name("Expresso").putZutaten("Bohnen", 50).putZutaten("Zucker", 20).preis(2.25).build(), system.lookupRoot());
+//        barista.tell(ImmutableAddRezept.builder().name("Latte Macchiato").putZutaten("Bohnen", 60).putZutaten("Milch", 100).preis(3.79).build(), system.lookupRoot());
     }
 }

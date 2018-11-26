@@ -87,6 +87,10 @@ public class Theke extends AbstractActor {
 			return path(uuidSegment(), bestellungId -> route(
 					get(() -> completeOKWithFuture(PatternsCS.ask(bedienung,
 							ImmutableGetBestellung.of(bestellungId), 10000), Jackson.marshaller(om))),
+					put(() -> completeOK(
+							PatternsCS.ask(bedienung,
+							ImmutableSetBestellungBezahlt.of(bestellungId), 10000), Jackson.marshaller(om))
+					),
 					path("bezahlen", () -> put(() -> completeOK(
 							PatternsCS.ask(bedienung,
 							ImmutableSetBestellungBezahlt.of(bestellungId), 10000), Jackson.marshaller(om))

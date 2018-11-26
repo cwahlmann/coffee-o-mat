@@ -81,6 +81,7 @@ public class Barista extends AbstractPersistentActor {
 			return;
 		}
 		BaristaMessages.RezeptAdded rezept = speisekarte.rezepte().get(msg.name());
+		log.info("==> beginne Prüfung Rezept {}", toJson(rezept));
 		PatternsCS.ask(lager, ImmutablePruefeZutaten.builder().bestellungId(msg.bestellungId())
 				.putAllZutaten(rezept.zutaten()).build(), 1000)
 		.whenComplete((evt, throwable) -> {

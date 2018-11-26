@@ -31,7 +31,7 @@ public class Bedienung extends AbstractActor {
 
     private Bedienung(ActorRef lager, ActorRef produktion) {
     	shardRegion = ClusterSharding.get(context().system()).start(
-                "verwaltung",
+                "coffeeomat",
                 BedienungEntity.props(lager, produktion),
                 ClusterShardingSettings.create(context().system()),
                 messageExtractor
@@ -51,7 +51,7 @@ public class Bedienung extends AbstractActor {
     private void onCreateBestellung(BedienungMessages.BestellungData msg) {
         UUID entityId = UUID.randomUUID();
         log.info("==> Neue EntityId {} für Bestellung [Kunde: {}, Produkt: {}] vergeben.", entityId, msg.kunde(), msg.produkt());
-        self().forward(ImmutableCreateBestellung.of(msg.kunde(), msg.produkt(), entityId), context());
+        self().forward(ImmutableCreateBestellung.of(msg.kunde(), msg.produkt(), false, false, false, false, false, entityId), context());
     }
     
     private void onZutatenGeprueft(LagerMessages.ZutatenGeprueft msg) {
