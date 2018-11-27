@@ -8,7 +8,7 @@ import org.immutables.value.Value;
 
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
-public class BaristaMessages {
+public class BaristaMessages { 
         
 	@JsonSerialize
     @Value.Immutable
@@ -21,18 +21,10 @@ public class BaristaMessages {
 	@JsonSerialize
     @Value.Immutable
     public interface Speisekarte extends Serializable {
-    	@Value.Parameter Map<String, RezeptAdded> rezepte();
+    	@Value.Parameter Map<String, AddRezept> rezepte();
     }
 
 	// Command (Impuls von außen + Seiteneffekte)
-
-	@JsonSerialize
-    @Value.Immutable
-    public interface RezeptAdded extends Serializable {
-    	@Value.Parameter String name();
-    	@Value.Parameter Map<String, Integer> zutaten();
-    	@Value.Parameter double preis();
-    }
 
 	@JsonSerialize
     @Value.Immutable
@@ -60,18 +52,4 @@ public class BaristaMessages {
     }
 
 	// Events (Beschreibt den Fakt)
-
-	@JsonSerialize
-    @Value.Immutable
-    public interface RezeptGeprueft extends Serializable {
-    	@Value.Parameter UUID bestellungId();
-    	@Value.Parameter boolean erfolgreich();
-    }
-
-	@JsonSerialize
-    @Value.Immutable
-    public interface RezeptZubereitet extends Serializable {
-    	@Value.Parameter UUID bestellungId();
-    	@Value.Parameter boolean erfolgreich();
-    }
 }

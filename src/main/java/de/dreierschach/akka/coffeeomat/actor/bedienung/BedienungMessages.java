@@ -1,17 +1,16 @@
 package de.dreierschach.akka.coffeeomat.actor.bedienung;
 
 import java.io.Serializable;
+import java.util.Map;
 import java.util.UUID;
 
 import org.immutables.value.Value;
 
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
-import de.dreierschach.akka.coffeeomat.actor.barista.BaristaMessages;
 
 
-
-public class BedienungMessages {
+public class BedienungMessages { 
     
 	// Command (Impuls von außen + Seiteneffekte)
 	
@@ -26,11 +25,15 @@ public class BedienungMessages {
         @Value.Parameter String produkt();
     }
     
-    // 
+    @JsonSerialize
+    @Value.Immutable
+    public interface Bestellungen extends Serializable {
+    	@Value.Parameter Map<UUID, BestellungCreated> bestellungen();
+    }
     
     @JsonSerialize
     @Value.Immutable
-    public interface CreateBestellung extends WithEntityId {
+    public interface BestellungCreated extends WithEntityId {
         @Value.Parameter String kunde();
         @Value.Parameter String produkt();    	
         @Value.Parameter boolean validiert();
@@ -42,27 +45,45 @@ public class BedienungMessages {
 
     @JsonSerialize
     @Value.Immutable
-    public interface SetBestellungValidiert extends WithEntityId {
+    public interface RezeptVonBaristaGeprueft extends WithEntityId {
+        @Value.Parameter boolean erfolgreich();    	
     }
 
     @JsonSerialize
     @Value.Immutable
-    public interface SetBestellungBezahlt extends WithEntityId {
+    public interface ZutatenImLagerGeprueft extends WithEntityId {
+        @Value.Parameter boolean erfolgreich();    	
     }
 
     @JsonSerialize
     @Value.Immutable
-    public interface SetBestellungZubereitet extends WithEntityId {
+    public interface BestellungValidiert extends WithEntityId {
     }
 
     @JsonSerialize
     @Value.Immutable
-    public interface SetBestellungGeliefert extends WithEntityId {
+    public interface BestellungBezahlt extends WithEntityId {
     }
 
     @JsonSerialize
     @Value.Immutable
-    public interface SetBestellungAbgebrochen extends WithEntityId {
+    public interface ZutatenAusLagerEntnommen extends WithEntityId {
+        @Value.Parameter boolean erfolgreich();    	
+    }
+
+    @JsonSerialize
+    @Value.Immutable
+    public interface BestellungZubereitet extends WithEntityId {
+    }
+
+    @JsonSerialize
+    @Value.Immutable
+    public interface BestellungGeliefert extends WithEntityId {
+    }
+
+    @JsonSerialize
+    @Value.Immutable
+    public interface BestellungAbgebrochen extends WithEntityId {
     }
 
     @JsonSerialize

@@ -1,0 +1,8 @@
+curl -X POST -H "Content-Type: application/json" -d '{"kunde":"Christian", "produkt":"Espresso"}' localhost:8080/bestellung
+
+curl -X POST -H "Content-Type: application/json" -d '{"name":"Yasmin","anzahl":1000}' localhost:8080/lager
+curl -X GET -H "Content-Type: application/json" localhost:8080/lager
+
+curl -X POST -H "Content-Type: application/json" -d '{"name":"Tee", "zutaten":{"Yasmin": 30, "Zucker":20}, "preis":1.25}' localhost:8080/barista
+curl -X GET -H "Content-Type: application/json" localhost:8080/barista
+

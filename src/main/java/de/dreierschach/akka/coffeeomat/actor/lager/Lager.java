@@ -9,8 +9,9 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import akka.actor.Props;
-import akka.actor.AbstractActor.Receive;
 import akka.persistence.AbstractPersistentActor;
+import de.dreierschach.akka.coffeeomat.actor.bedienung.ImmutableZutatenAusLagerEntnommen;
+import de.dreierschach.akka.coffeeomat.actor.bedienung.ImmutableZutatenImLagerGeprueft;
 
 public class Lager extends AbstractPersistentActor {
 	private final static Logger log = LoggerFactory.getLogger(Lager.class);
@@ -35,23 +36,23 @@ public class Lager extends AbstractPersistentActor {
 				.match(LagerMessages.EntnehmeZutaten.class, this::onEntnehmeZutaten).build();
 	}
 
-	@Override
-	public Receive createReceiveRecover() {
-		return receiveBuilder().match(LagerMessages.ZutatAdded.class, this::onZutatAdded)
-				.match(LagerMessages.ZutatenEntnommen.class, this::onZutatenEntnommen).build();
-	}
-
 	private void onAddZutat(LagerMessages.AddZutat msg) {
 		int anzahl = bestand.zutaten().getOrDefault(msg.name(), 0) + msg.anzahl();
-		persist(ImmutableZutatAdded.builder().anzahl(msg.anzahl()).name(msg.name()).build(), evt -> {
-			bestand = ImmutableBestand.builder().putAllZutaten(bestand.zutaten()).putZutaten(msg.name(), anzahl)
-					.build();
+		persist(msg, evt -> {
+			bestand = addZutat(bestand, msg.name(), msg.anzahl());
 			log.info("==> Fuege {} mal {} hinzu. Bestand ist jetzt {}.", msg.anzahl(), msg.name(),
 					toJson(bestand.zutaten()));
 			sender().tell(bestand, self());
 		});
 	}
 
+	private ImmutableBestand addZutat(ImmutableBestand bestand, String name, int anzahl) {
+		ImmutableBestand.Builder builder = ImmutableBestand.builder();
+		bestand.zutaten().entrySet().stream().filter(e -> !e.getKey().equals(name)).forEach(builder::putZutaten);
+		bestand = builder.putZutaten(name, anzahl).build();
+		return bestand;
+	}
+	
 	private void onGetZutat(LagerMessages.GetZutat msg) {
 		int anzahl = bestand.zutaten().getOrDefault(msg.name(), 0);
 		ImmutableZutat zutat = ImmutableZutat.builder().name(msg.name()).anzahl(anzahl).build();
@@ -69,7 +70,7 @@ public class Lager extends AbstractPersistentActor {
 				.filter(e -> bestand.zutaten().getOrDefault(e.getKey(), 0) < e.getValue()).findAny().isPresent();
 		log.info("==> Zutaten {} geprüft: {}", toJson(msg.zutaten()), erfolgreich);
 		sender().tell(
-				ImmutableZutatenGeprueft.builder().bestellungId(msg.bestellungId()).erfolgreich(erfolgreich).build(),
+				ImmutableZutatenImLagerGeprueft.builder().entityId(msg.bestellungId()).erfolgreich(erfolgreich).build(),
 				self());
 	}
 
@@ -86,30 +87,34 @@ public class Lager extends AbstractPersistentActor {
 								.build();
 						log.info("==> Zutaten {} erfolgreich entnommen, Bestand ist jetzt {}", toJson(msg.zutaten()),
 								toJson(bestand.zutaten()));
-						sender().tell(ImmutableZutatenEntnommen.builder().bestellungId(msg.bestellungId())
+						sender().tell(ImmutableZutatenAusLagerEntnommen.builder().entityId(msg.bestellungId())
 								.erfolgreich(true).build(), self());
 					});
 		} else {
 			log.error(">>> Zutaten {} konnten nicht erfolgreich entnommen werden", toJson(msg.zutaten()));
 			sender().tell(
-					ImmutableZutatenEntnommen.builder().bestellungId(msg.bestellungId()).erfolgreich(false).build(),
+					ImmutableZutatenAusLagerEntnommen.builder().entityId(msg.bestellungId()).erfolgreich(false).build(),
 					self());
 		}
 	}
 
-	private void onZutatAdded(LagerMessages.ZutatAdded msg) {
-		int anzahl = bestand.zutaten().getOrDefault(msg.name(), 0) + msg.anzahl();
-		bestand = ImmutableBestand.builder().putAllZutaten(bestand.zutaten()).putZutaten(msg.name(), anzahl).build();
-		log.info("==> REPLAY: Fuege {} mal {} hinzu. Bestand ist jetzt {}.", msg.anzahl(), msg.name(),
-				toJson(bestand.zutaten()));
-	}
-
-	private void onZutatenEntnommen(LagerMessages.ZutatenEntnommen msg) {
-		bestand = ImmutableBestand.builder().putAllZutaten(bestand.zutaten().entrySet().stream().collect(
-				Collectors.toMap(e -> e.getKey(), e -> e.getValue() - msg.zutaten().getOrDefault(e.getKey(), 0))))
+	@Override
+	public Receive createReceiveRecover() {
+		return receiveBuilder()
+				.match(LagerMessages.AddZutat.class, msg -> {
+					int anzahl = bestand.zutaten().getOrDefault(msg.name(), 0) + msg.anzahl();
+					bestand = addZutat(bestand, msg.name(), anzahl);
+					log.info("==> REPLAY: Fuege {} mal {} hinzu. Bestand ist jetzt {}.", msg.anzahl(), msg.name(),
+							toJson(bestand.zutaten()));					
+				})
+				.match(LagerMessages.EntnehmeZutaten.class, msg -> {
+					bestand = ImmutableBestand.builder().putAllZutaten(bestand.zutaten().entrySet().stream().collect(
+							Collectors.toMap(e -> e.getKey(), e -> e.getValue() - msg.zutaten().getOrDefault(e.getKey(), 0))))
+							.build();
+					log.info("==> REPLAY: Zutaten {} erfolgreich entnommen, Bestand ist jetzt {}", toJson(msg.zutaten()),
+							toJson(bestand.zutaten()));					
+				})
 				.build();
-		log.info("==> REPLAY: Zutaten {} erfolgreich entnommen, Bestand ist jetzt {}", toJson(msg.zutaten()),
-				toJson(bestand.zutaten()));
 	}
 
 	// util

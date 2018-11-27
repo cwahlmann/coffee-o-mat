@@ -64,20 +64,6 @@ public class LagerMessages {
     
     @JsonSerialize
     @Value.Immutable
-    public interface ZutatAdded extends Serializable {
-    	@Value.Parameter String name();
-    	@Value.Parameter int anzahl();
-    }
-
-    @JsonSerialize
-    @Value.Immutable
-    public interface ZutatenGeprueft extends Serializable {
-    	@Value.Parameter UUID bestellungId();
-    	@Value.Parameter boolean erfolgreich();
-    }
-    
-    @JsonSerialize
-    @Value.Immutable
     public interface ZutatenEntnommen extends Serializable {
     	@Value.Parameter UUID bestellungId();
     	@Value.Parameter Map<String, Integer> zutaten();
