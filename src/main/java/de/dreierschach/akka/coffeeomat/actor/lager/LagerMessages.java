@@ -36,7 +36,6 @@ public class LagerMessages {
     @JsonSerialize
     @Value.Immutable
     public interface GetBestand extends Serializable {
-    	@Value.Parameter String name();
     }
 
     @JsonSerialize

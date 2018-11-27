@@ -101,9 +101,10 @@ public class Theke extends AbstractActor {
 							pathEnd(() -> route(
 									post(() -> entity(Jackson.unmarshaller(om, ImmutableAddZutat.class),
 											msg -> completeOKWithFuture(PatternsCS.ask(lager, msg, 10000),
-													Jackson.marshaller(om))))
-									))
-									
+													Jackson.marshaller(om)))),
+									get(() -> pathEnd(() -> completeOKWithFuture(PatternsCS.ask(lager, ImmutableGetBestand.builder().build(), 10000),
+											Jackson.marshaller(om))))
+									))									
 					)),
 					pathPrefix("barista", () -> route(
 							pathEnd(() -> route(
