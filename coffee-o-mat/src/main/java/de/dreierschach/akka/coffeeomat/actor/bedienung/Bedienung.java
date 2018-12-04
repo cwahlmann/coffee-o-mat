@@ -87,7 +87,7 @@ public class Bedienung extends AbstractPersistentActor {
 			ImmutableBestellungCreated bestellung = bestellungen.get(msg.entityId()).withBezahlt(true);
 			sender().tell(bestellung, self());
 			log.info("==> Die Bestellung wurde bezahlt {}", bestellung.entityId());
-			barista.tell(ImmutableBereiteRezeptZu.builder().bestellungId(bestellung.entityId()).name(bestellung.produkt()), self());
+			barista.tell(ImmutableBereiteRezeptZu.builder().bestellungId(bestellung.entityId()).name(bestellung.produkt()).build(), self());
 		});
 	}
 	
@@ -139,24 +139,24 @@ public class Bedienung extends AbstractPersistentActor {
 			bestellungen.put(bestellung.entityId(), bestellung);
 			log.info("==> REPLAY neue Bestellung {}", toJson(bestellung));
 		}).match(BedienungMessages.BestellungValidiert.class, msg -> {
-			ImmutableBestellungCreated bestellung = bestellungen.get(msg.entityId());
-			bestellungen.put(bestellung.entityId(), bestellung.withValidiert(true));
+			ImmutableBestellungCreated bestellung = bestellungen.get(msg.entityId()).withValidiert(true);
+			bestellungen.put(bestellung.entityId(), bestellung);
 			log.info("==> REPLAY Bestellung validiert {}", toJson(bestellung));
 		}).match(BedienungMessages.BestellungBezahlt.class, msg -> {
-			ImmutableBestellungCreated bestellung = bestellungen.get(msg.entityId());
-			bestellungen.put(bestellung.entityId(), bestellung.withBezahlt(true));
+			ImmutableBestellungCreated bestellung = bestellungen.get(msg.entityId()).withBezahlt(true);
+			bestellungen.put(bestellung.entityId(), bestellung);
 			log.info("==> REPLAY Bestellung bezahlt {}", toJson(bestellung));
 		}).match(BedienungMessages.BestellungZubereitet.class, msg -> {
-			ImmutableBestellungCreated bestellung = bestellungen.get(msg.entityId());
-			bestellungen.put(bestellung.entityId(), bestellung.withZubereitet(true));
+			ImmutableBestellungCreated bestellung = bestellungen.get(msg.entityId()).withZubereitet(true);
+			bestellungen.put(bestellung.entityId(), bestellung);
 			log.info("==> REPLAY Bestellung zubereitet {}", toJson(bestellung));
 		}).match(BedienungMessages.BestellungGeliefert.class, msg -> {
-			ImmutableBestellungCreated bestellung = bestellungen.get(msg.entityId());
-			bestellungen.put(bestellung.entityId(), bestellung.withGeliefert(true));
+			ImmutableBestellungCreated bestellung = bestellungen.get(msg.entityId()).withGeliefert(true);
+			bestellungen.put(bestellung.entityId(), bestellung);
 			log.info("==> REPLAY Bestellung geliefert {}", toJson(bestellung));
 		}).match(BedienungMessages.BestellungAbgebrochen.class, msg -> {
-			ImmutableBestellungCreated bestellung = bestellungen.get(msg.entityId());
-			bestellungen.put(bestellung.entityId(), bestellung.withAbgebrochen(true));
+			ImmutableBestellungCreated bestellung = bestellungen.get(msg.entityId()).withAbgebrochen(true);
+			bestellungen.put(bestellung.entityId(), bestellung);
 			log.info("==> REPLAY Bestellung abgebrochen {}", toJson(bestellung));
 		}).build();
 	}

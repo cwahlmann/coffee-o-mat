@@ -68,7 +68,7 @@ public class Lager extends AbstractPersistentActor {
 				.filter(e -> bestand.zutaten().getOrDefault(e.getKey(), 0) < e.getValue()).findAny().isPresent();
 		log.info("==> Zutaten {} geprüft: {}", toJson(msg.zutaten()), erfolgreich);
 		sender().tell(
-				ImmutableZutatenGeprueft.builder().entityId(msg.bestellungId()).erfolgreich(erfolgreich).build(),
+				ImmutableZutatenGeprueft.builder().bestellungId(msg.bestellungId()).erfolgreich(erfolgreich).build(),
 				self());
 	}
 

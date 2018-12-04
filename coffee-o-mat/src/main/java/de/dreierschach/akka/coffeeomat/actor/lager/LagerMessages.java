@@ -8,8 +8,6 @@ import org.immutables.value.Value;
 
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
-import de.dreierschach.akka.coffeeomat.actor.bedienung.BedienungMessages.WithEntityId;
-
 
 
 public class LagerMessages {
@@ -56,7 +54,7 @@ public class LagerMessages {
 
     @JsonSerialize
     @Value.Immutable
-    public interface ZutatenGeprueft extends WithEntityId {
+    public interface ZutatenGeprueft extends Serializable {
     	@Value.Parameter UUID bestellungId();
         @Value.Parameter boolean erfolgreich();    	
     }

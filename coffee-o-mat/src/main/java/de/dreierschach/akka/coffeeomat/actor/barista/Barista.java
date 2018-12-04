@@ -73,25 +73,27 @@ public class Barista extends AbstractPersistentActor {
 	}
 
 	private void onPruefeRezept(BaristaMessages.PruefeRezept msg) {
-		if (speisekarte.rezepte().containsKey(msg.name())) {
-			sender().tell(ImmutableRezeptGeprueft.builder().bestellungId(msg.bestellungId()).erfolgreich(false).build(), self());
+		ActorRef sender = sender();
+		if (!speisekarte.rezepte().containsKey(msg.name())) {
+			sender.tell(ImmutableRezeptGeprueft.builder().bestellungId(msg.bestellungId()).erfolgreich(false).build(), self());
 			log.info("==> Bestellung {}, Rezept {} unbekannt", msg.bestellungId(), msg.name());
 			return;		
 		}
 		AddRezept rezept = speisekarte.rezepte().get(msg.name());
-		log.info("==> Bestellung {}, Rezept {} gefunden, pruefe Zutaten [}", msg.bestellungId(),msg.name(),  rezept.zutaten());
+		log.info("==> Bestellung {}, Rezept {} gefunden, pruefe Zutaten {}", msg.bestellungId(),msg.name(),  rezept.zutaten());
 		PatternsCS.ask(lager, ImmutablePruefeZutaten.builder().bestellungId(msg.bestellungId()).putAllZutaten(rezept.zutaten()).build(), 1000)
 		.whenComplete((evt, throawble) ->  {
 			LagerMessages.ZutatenGeprueft response = (LagerMessages.ZutatenGeprueft) evt;
-			sender().tell(ImmutableRezeptGeprueft.builder().bestellungId(msg.bestellungId()).erfolgreich(response.erfolgreich()).build(),
+			sender.tell(ImmutableRezeptGeprueft.builder().bestellungId(msg.bestellungId()).erfolgreich(response.erfolgreich()).build(),
 					self());
 			log.info("==> Bestellung {}, Rezept {}, Zutaten geprüft: {}", msg.bestellungId(), msg.name(), response.erfolgreich());
 		});
 	}
 
 	private void onBereiteRezeptZu(BaristaMessages.BereiteRezeptZu msg) {
-		if (speisekarte.rezepte().containsKey(msg.name())) {
-			sender().tell(ImmutableRezeptZubereitet.builder().bestellungId(msg.bestellungId()).erfolgreich(false).build(), self());
+		ActorRef sender = sender();
+		if (!speisekarte.rezepte().containsKey(msg.name())) {
+			sender.tell(ImmutableRezeptZubereitet.builder().bestellungId(msg.bestellungId()).erfolgreich(false).build(), self());
 			log.info("==> Bestellung {}, Rezept {} unbekannt", msg.bestellungId(), msg.name());
 			return;		
 		}
@@ -100,7 +102,7 @@ public class Barista extends AbstractPersistentActor {
 		PatternsCS.ask(lager, ImmutableEntnehmeZutaten.builder().bestellungId(msg.bestellungId()).putAllZutaten(rezept.zutaten()).build(), 1000)
 		.whenComplete((evt, throawble) ->  {
 			LagerMessages.ZutatenEntnommen response = (LagerMessages.ZutatenEntnommen) evt;
-			sender().tell(ImmutableRezeptZubereitet.builder().bestellungId(msg.bestellungId()).erfolgreich(response.erfolgreich()).build(),
+			sender.tell(ImmutableRezeptZubereitet.builder().bestellungId(msg.bestellungId()).erfolgreich(response.erfolgreich()).build(),
 					self());
 			log.info("==> Bestellung {}, Rezept {}, Zutaten entnommen: {}", msg.bestellungId(), msg.name(), response.erfolgreich());
 		});
