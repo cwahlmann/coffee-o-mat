@@ -12,28 +12,21 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import akka.actor.ActorRef;
 import akka.actor.Props;
-import akka.pattern.PatternsCS;
 import akka.persistence.AbstractPersistentActor;
-import de.dreierschach.akka.coffeeomat.actor.barista.BaristaMessages.AddRezept;
+import de.dreierschach.akka.coffeeomat.actor.barista.BaristaMessages;
 import de.dreierschach.akka.coffeeomat.actor.barista.ImmutableBereiteRezeptZu;
-import de.dreierschach.akka.coffeeomat.actor.barista.ImmutableGetRezept;
 import de.dreierschach.akka.coffeeomat.actor.barista.ImmutablePruefeRezept;
-import de.dreierschach.akka.coffeeomat.actor.bedienung.BedienungMessages.BestellungCreated;
-import de.dreierschach.akka.coffeeomat.actor.lager.ImmutableEntnehmeZutaten;
-import de.dreierschach.akka.coffeeomat.actor.lager.ImmutablePruefeZutaten;
 
 public class Bedienung extends AbstractPersistentActor {
 	private final static Logger log = LoggerFactory.getLogger(Bedienung.class);
 
-	public static Props props(ActorRef lager, ActorRef barista) {
-		return Props.create(Bedienung.class, () -> new Bedienung(lager, barista));
+	public static Props props(ActorRef barista) {
+		return Props.create(Bedienung.class, () -> new Bedienung(barista));
 	}
 
-	private ActorRef lager;
 	private ActorRef barista;
 
-	private Bedienung(ActorRef lager, ActorRef barista) {
-		this.lager = lager;
+	private Bedienung(ActorRef barista) {
 		this.barista = barista;
 	}
 
@@ -48,11 +41,10 @@ public class Bedienung extends AbstractPersistentActor {
 	public Receive createReceive() {
 		return receiveBuilder().match(BedienungMessages.BestellungData.class, this::onCreateBestellung)
 				.match(BedienungMessages.GetBestellung.class, this::onGet)
-				.match(BedienungMessages.RezeptVonBaristaGeprueft.class, this::onRezeptGeprueft)
-				.match(BedienungMessages.ZutatenImLagerGeprueft.class, this::onZutatenGeprueft)
+				.match(BaristaMessages.RezeptGeprueft.class, this::onRezeptGeprueft)
 				.match(BedienungMessages.BestellungValidiert.class, this::onValidiert)
 				.match(BedienungMessages.BestellungBezahlt.class, this::onBezahlt)
-				.match(BedienungMessages.ZutatenAusLagerEntnommen.class, this::onZutatenEntnommen)
+				.match(BaristaMessages.RezeptZubereitet.class, this::onRezeptZubereitet)
 				.match(BedienungMessages.BestellungZubereitet.class, this::onBestellungZubereitet)
 				.match(BedienungMessages.BestellungGeliefert.class, this::onGeliefert)
 				.match(BedienungMessages.BestellungAbgebrochen.class, this::onAbgebrochen).build();
@@ -72,42 +64,12 @@ public class Bedienung extends AbstractPersistentActor {
 		});
 	}
 
-	private void onRezeptGeprueft(BedienungMessages.RezeptVonBaristaGeprueft msg) {
-		log.info("==> Rezept von Bestellung {} geprüft: {}", msg.entityId(), msg.erfolgreich());
-		ImmutableBestellungCreated bestellung = bestellungen.get(msg.entityId());
+	private void onRezeptGeprueft(BaristaMessages.RezeptGeprueft msg) {
+		log.info("==> Rezept von Bestellung {} geprüft: {}", msg.bestellungId(), msg.erfolgreich());
 		if (msg.erfolgreich()) {
-			PatternsCS.ask(barista, ImmutableGetRezept.builder().name(bestellung.produkt()).build(), 1000)
-					.whenComplete((m, throwable) -> {
-						if (m != null) {
-							AddRezept rezept = (AddRezept) m;
-							lager.tell(ImmutablePruefeZutaten.builder().bestellungId(bestellung.entityId())
-									.putAllZutaten(rezept.zutaten()).build(), self());
-						} else {
-							log.error(
-									">>> Rezept für {} konnte nicht abgerufen werden; Bestellung {} wird abgebrochen.",
-									bestellung.produkt(), bestellung.entityId());
-							self().tell(
-									ImmutableBestellungAbgebrochen.builder().entityId(bestellung.entityId()).build(),
-									self());
-						}
-					});
+			self().tell(ImmutableBestellungValidiert.of(msg.bestellungId()), self());
 		} else {
-			log.error(">>> Rezept für {} konnte nicht gefunden werden; Bestellung {} wird abgebrochen.",
-					bestellung.produkt(), bestellung.entityId());
-			self().tell(ImmutableBestellungAbgebrochen.builder().entityId(bestellung.entityId()).build(), self());
-		}
-	}
-
-	private void onZutatenGeprueft(BedienungMessages.ZutatenImLagerGeprueft msg) {
-		ImmutableBestellungCreated bestellung = bestellungen.get(msg.entityId());
-		if (msg.erfolgreich()) {
-			log.info("==> Die Zutaten für das Rezept {}, Bestellung {} wurden erfolgreich geprueft",
-					bestellung.produkt(), bestellung.entityId());
-			self().tell(ImmutableBestellungValidiert.builder().entityId(bestellung.entityId()).build(), self());
-		} else {
-			log.error(">>> Die Zutaten für das Rezept {} sind nicht vorhanden; Bestellung {} wird abgebrochen.",
-					bestellung.produkt(), bestellung.entityId());
-			self().tell(ImmutableBestellungAbgebrochen.builder().entityId(bestellung.entityId()).build(), self());
+			self().tell(ImmutableBestellungAbgebrochen.of(msg.bestellungId()), self());
 		}
 	}
 
@@ -115,64 +77,42 @@ public class Bedienung extends AbstractPersistentActor {
 		persist(msg, evt -> {
 			ImmutableBestellungCreated bestellung = bestellungen.get(msg.entityId()).withValidiert(true);
 			bestellungen.put(msg.entityId(), bestellung);
-			log.info("==> Die Bestellung wurde validiert {}", toJson(bestellung));
+			sender().tell(bestellung, self());
+			log.info("==> Die Bestellung ist validiert {}", bestellung.entityId());
 		});
 	}
 
 	private void onBezahlt(BedienungMessages.BestellungBezahlt msg) {
 		persist(msg, evt -> {
 			ImmutableBestellungCreated bestellung = bestellungen.get(msg.entityId()).withBezahlt(true);
-			bestellungen.put(msg.entityId(), bestellung);
-
 			sender().tell(bestellung, self());
 			log.info("==> Die Bestellung wurde bezahlt {}", bestellung.entityId());
-			PatternsCS.ask(barista, ImmutableGetRezept.builder().name(bestellung.produkt()).build(), 1000)
-					.whenComplete((m, throwable) -> {
-						if (m != null) {
-							AddRezept rezept = (AddRezept) m;
-							lager.tell(ImmutableEntnehmeZutaten.builder().bestellungId(msg.entityId())
-									.putAllZutaten(rezept.zutaten()).build(), self());
-						} else {
-							log.error("Rezept für {} konnte nicht abgerufen werden; Bestellung {} wird abgebrochen.",
-									bestellung.produkt(), bestellung.entityId());
-							self().tell(ImmutableBestellungAbgebrochen.builder().entityId(bestellung.entityId()),
-									self());
-						}
-					});
+			barista.tell(ImmutableBereiteRezeptZu.builder().bestellungId(bestellung.entityId()).name(bestellung.produkt()), self());
 		});
 	}
-
-	private void onZutatenEntnommen(BedienungMessages.ZutatenAusLagerEntnommen msg) {
-		ImmutableBestellungCreated bestellung = bestellungen.get(msg.entityId());
+	
+	private void onRezeptZubereitet(BaristaMessages.RezeptZubereitet msg) {
+		log.info("==> Rezept von Bestellung {} zubereitet: {}", msg.bestellungId(), msg.erfolgreich());
 		if (msg.erfolgreich()) {
-			log.info("==> Die Zutaten für Rezept {}, Bestellung {} wurden entnommen.", bestellung.produkt(),
-					bestellung.entityId());
-			barista.tell(ImmutableBereiteRezeptZu.builder().bestellungId(bestellung.entityId())
-					.name(bestellung.produkt()).build(), self());
+			self().tell(ImmutableBestellungZubereitet.of(msg.bestellungId()), self());
 		} else {
-			log.error(">>> Die Zutaten für Rezept {}, Bestellung {} konnten nicht entnommen werden.",
-					bestellung.produkt(), bestellung.entityId());
-			self().tell(ImmutableBestellungAbgebrochen.builder().entityId(bestellung.entityId()).build(), self());
+			self().tell(ImmutableBestellungAbgebrochen.of(msg.bestellungId()), self());
 		}
 	}
 
 	private void onBestellungZubereitet(BedienungMessages.BestellungZubereitet msg) {
-		persist(ImmutableBestellungZubereitet.builder().entityId(msg.entityId()).build(), evt -> {
+		persist(msg, evt -> {
 			ImmutableBestellungCreated bestellung = bestellungen.get(msg.entityId());
 			bestellung = bestellung.withZubereitet(true);
 			bestellungen.put(msg.entityId(), bestellung);
-
 			log.info("==> Die Bestellung {} ist nun zubereitet", bestellung.entityId());
 		});
 	}
 
 	private void onGeliefert(BedienungMessages.BestellungGeliefert msg) {
 		persist(msg, evt -> {
-			ImmutableBestellungCreated bestellung = bestellungen.get(msg.entityId());
-			bestellung = bestellung.withGeliefert(true);
+			ImmutableBestellungCreated bestellung = bestellungen.get(msg.entityId()).withGeliefert(true);
 			bestellungen.put(msg.entityId(), bestellung);
-
-			sender().tell(bestellung, self());
 			log.info("==> Die Bestellung ist serviert {}", bestellung.entityId());
 		});
 	}
@@ -182,8 +122,6 @@ public class Bedienung extends AbstractPersistentActor {
 			ImmutableBestellungCreated bestellung = bestellungen.get(msg.entityId());
 			bestellung = bestellung.withAbgebrochen(true);
 			bestellungen.put(msg.entityId(), bestellung);
-
-			sender().tell(bestellung, self());
 			log.error(">>> Bestellung wurde abgebrochen {}", bestellung.entityId());
 		});
 	}

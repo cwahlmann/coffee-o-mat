@@ -14,10 +14,6 @@ public class BedienungMessages {
     
 	// Command (Impuls von außen + Seiteneffekte)
 	
-    public interface WithEntityId extends Serializable {
-        @Value.Parameter UUID entityId();
-    }
-    
     @JsonSerialize
     @Value.Immutable
     public interface BestellungData extends Serializable {
@@ -25,6 +21,11 @@ public class BedienungMessages {
         @Value.Parameter String produkt();
     }
     
+    public interface WithEntityId extends Serializable {
+        @Value.Parameter UUID entityId();
+    }
+    
+
     @JsonSerialize
     @Value.Immutable
     public interface Bestellungen extends Serializable {
@@ -45,30 +46,12 @@ public class BedienungMessages {
 
     @JsonSerialize
     @Value.Immutable
-    public interface RezeptVonBaristaGeprueft extends WithEntityId {
-        @Value.Parameter boolean erfolgreich();    	
-    }
-
-    @JsonSerialize
-    @Value.Immutable
-    public interface ZutatenImLagerGeprueft extends WithEntityId {
-        @Value.Parameter boolean erfolgreich();    	
-    }
-
-    @JsonSerialize
-    @Value.Immutable
     public interface BestellungValidiert extends WithEntityId {
     }
 
     @JsonSerialize
     @Value.Immutable
     public interface BestellungBezahlt extends WithEntityId {
-    }
-
-    @JsonSerialize
-    @Value.Immutable
-    public interface ZutatenAusLagerEntnommen extends WithEntityId {
-        @Value.Parameter boolean erfolgreich();    	
     }
 
     @JsonSerialize

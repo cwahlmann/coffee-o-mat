@@ -6,32 +6,43 @@ import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import akka.actor.ActorRef;
 import akka.actor.Props;
+import akka.pattern.PatternsCS;
 import akka.persistence.AbstractPersistentActor;
-import de.dreierschach.akka.coffeeomat.actor.bedienung.ImmutableBestellungZubereitet;
-import de.dreierschach.akka.coffeeomat.actor.bedienung.ImmutableRezeptVonBaristaGeprueft;
+import de.dreierschach.akka.coffeeomat.actor.barista.BaristaMessages.AddRezept;
+import de.dreierschach.akka.coffeeomat.actor.lager.ImmutableEntnehmeZutaten;
+import de.dreierschach.akka.coffeeomat.actor.lager.ImmutablePruefeZutaten;
+import de.dreierschach.akka.coffeeomat.actor.lager.LagerMessages;
 
 public class Barista extends AbstractPersistentActor {
 	private final static Logger log = LoggerFactory.getLogger(Barista.class);
 
-	public static Props props() {
-		return Props.create(Barista.class, Barista::new);
+	public static Props props(ActorRef lager) {
+		return Props.create(Barista.class, () -> new Barista(lager));
 	}
 
+	private ActorRef lager;
+
+	public Barista(ActorRef lager) {
+		this.lager = lager;
+	}
+	
 	@Override
 	public String persistenceId() {
 		return "barista-" + self().path().name();
 	}
 
 	private ImmutableSpeisekarte speisekarte = ImmutableSpeisekarte.builder().build();
-
+	
 	@Override
 	public Receive createReceive() {
 		return receiveBuilder().match(BaristaMessages.AddRezept.class, this::onAddRezept)
 				.match(BaristaMessages.GetRezept.class, this::onGetRezept)
 				.match(BaristaMessages.GetRezeptliste.class, this::onGetRezeptliste)
 				.match(BaristaMessages.PruefeRezept.class, this::onPruefeRezept)
-				.match(BaristaMessages.BereiteRezeptZu.class, this::onBereiteRezeptZu).build();
+				.match(BaristaMessages.BereiteRezeptZu.class, this::onBereiteRezeptZu)
+				.build();
 	}
 
 	private void onAddRezept(BaristaMessages.AddRezept msg) {
@@ -62,18 +73,37 @@ public class Barista extends AbstractPersistentActor {
 	}
 
 	private void onPruefeRezept(BaristaMessages.PruefeRezept msg) {
-		boolean erfolgreich = speisekarte.rezepte().containsKey(msg.name());
-		log.info("{}", sender());
-		
-		sender().tell(ImmutableRezeptVonBaristaGeprueft.builder().entityId(msg.bestellungId()).erfolgreich(erfolgreich).build(),
-				self());
-		log.info("==> Rezept {}, Bestellung {} geprüft: {}", msg.name(), msg.bestellungId(), erfolgreich);
+		if (speisekarte.rezepte().containsKey(msg.name())) {
+			sender().tell(ImmutableRezeptGeprueft.builder().bestellungId(msg.bestellungId()).erfolgreich(false).build(), self());
+			log.info("==> Bestellung {}, Rezept {} unbekannt", msg.bestellungId(), msg.name());
+			return;		
+		}
+		AddRezept rezept = speisekarte.rezepte().get(msg.name());
+		log.info("==> Bestellung {}, Rezept {} gefunden, pruefe Zutaten [}", msg.bestellungId(),msg.name(),  rezept.zutaten());
+		PatternsCS.ask(lager, ImmutablePruefeZutaten.builder().bestellungId(msg.bestellungId()).putAllZutaten(rezept.zutaten()).build(), 1000)
+		.whenComplete((evt, throawble) ->  {
+			LagerMessages.ZutatenGeprueft response = (LagerMessages.ZutatenGeprueft) evt;
+			sender().tell(ImmutableRezeptGeprueft.builder().bestellungId(msg.bestellungId()).erfolgreich(response.erfolgreich()).build(),
+					self());
+			log.info("==> Bestellung {}, Rezept {}, Zutaten geprüft: {}", msg.bestellungId(), msg.name(), response.erfolgreich());
+		});
 	}
 
 	private void onBereiteRezeptZu(BaristaMessages.BereiteRezeptZu msg) {
-		sender().tell(ImmutableBestellungZubereitet.builder().entityId(msg.bestellungId()).build(),
-				self());
-		log.info("==> Rezept {} wurde erfolgreich zubereitet: {}", msg.name());
+		if (speisekarte.rezepte().containsKey(msg.name())) {
+			sender().tell(ImmutableRezeptZubereitet.builder().bestellungId(msg.bestellungId()).erfolgreich(false).build(), self());
+			log.info("==> Bestellung {}, Rezept {} unbekannt", msg.bestellungId(), msg.name());
+			return;		
+		}
+		AddRezept rezept = speisekarte.rezepte().get(msg.name());
+		log.info("==> Bestellung {}, Rezept {} gefunden, entnehme Zutaten [}", msg.bestellungId(),msg.name(),  rezept.zutaten());
+		PatternsCS.ask(lager, ImmutableEntnehmeZutaten.builder().bestellungId(msg.bestellungId()).putAllZutaten(rezept.zutaten()).build(), 1000)
+		.whenComplete((evt, throawble) ->  {
+			LagerMessages.ZutatenEntnommen response = (LagerMessages.ZutatenEntnommen) evt;
+			sender().tell(ImmutableRezeptZubereitet.builder().bestellungId(msg.bestellungId()).erfolgreich(response.erfolgreich()).build(),
+					self());
+			log.info("==> Bestellung {}, Rezept {}, Zutaten entnommen: {}", msg.bestellungId(), msg.name(), response.erfolgreich());
+		});
 	}
 
 	@Override

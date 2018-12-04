@@ -10,8 +10,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import akka.actor.Props;
 import akka.persistence.AbstractPersistentActor;
-import de.dreierschach.akka.coffeeomat.actor.bedienung.ImmutableZutatenAusLagerEntnommen;
-import de.dreierschach.akka.coffeeomat.actor.bedienung.ImmutableZutatenImLagerGeprueft;
 
 public class Lager extends AbstractPersistentActor {
 	private final static Logger log = LoggerFactory.getLogger(Lager.class);
@@ -37,7 +35,6 @@ public class Lager extends AbstractPersistentActor {
 	}
 
 	private void onAddZutat(LagerMessages.AddZutat msg) {
-		int anzahl = bestand.zutaten().getOrDefault(msg.name(), 0) + msg.anzahl();
 		persist(msg, evt -> {
 			bestand = addZutat(bestand, msg.name(), msg.anzahl());
 			log.info("==> Fuege {} mal {} hinzu. Bestand ist jetzt {}.", msg.anzahl(), msg.name(),
@@ -47,9 +44,10 @@ public class Lager extends AbstractPersistentActor {
 	}
 
 	private ImmutableBestand addZutat(ImmutableBestand bestand, String name, int anzahl) {
+		int anzahlNeu = bestand.zutaten().getOrDefault(name, 0) + anzahl;
 		ImmutableBestand.Builder builder = ImmutableBestand.builder();
 		bestand.zutaten().entrySet().stream().filter(e -> !e.getKey().equals(name)).forEach(builder::putZutaten);
-		bestand = builder.putZutaten(name, anzahl).build();
+		bestand = builder.putZutaten(name, anzahlNeu).build();
 		return bestand;
 	}
 	
@@ -70,7 +68,7 @@ public class Lager extends AbstractPersistentActor {
 				.filter(e -> bestand.zutaten().getOrDefault(e.getKey(), 0) < e.getValue()).findAny().isPresent();
 		log.info("==> Zutaten {} geprüft: {}", toJson(msg.zutaten()), erfolgreich);
 		sender().tell(
-				ImmutableZutatenImLagerGeprueft.builder().entityId(msg.bestellungId()).erfolgreich(erfolgreich).build(),
+				ImmutableZutatenGeprueft.builder().entityId(msg.bestellungId()).erfolgreich(erfolgreich).build(),
 				self());
 	}
 
@@ -87,13 +85,13 @@ public class Lager extends AbstractPersistentActor {
 								.build();
 						log.info("==> Zutaten {} erfolgreich entnommen, Bestand ist jetzt {}", toJson(msg.zutaten()),
 								toJson(bestand.zutaten()));
-						sender().tell(ImmutableZutatenAusLagerEntnommen.builder().entityId(msg.bestellungId())
+						sender().tell(ImmutableZutatenEntnommen.builder().bestellungId(msg.bestellungId())
 								.erfolgreich(true).build(), self());
 					});
 		} else {
 			log.error(">>> Zutaten {} konnten nicht erfolgreich entnommen werden", toJson(msg.zutaten()));
 			sender().tell(
-					ImmutableZutatenAusLagerEntnommen.builder().entityId(msg.bestellungId()).erfolgreich(false).build(),
+					ImmutableZutatenEntnommen.builder().bestellungId(msg.bestellungId()).erfolgreich(false).build(),
 					self());
 		}
 	}

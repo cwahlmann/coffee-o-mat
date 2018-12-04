@@ -8,6 +8,8 @@ import org.immutables.value.Value;
 
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
+import de.dreierschach.akka.coffeeomat.actor.bedienung.BedienungMessages.WithEntityId;
+
 public class BaristaMessages { 
         
 	@JsonSerialize
@@ -44,6 +46,13 @@ public class BaristaMessages {
     	@Value.Parameter String name();
     }
 
+    @JsonSerialize
+    @Value.Immutable
+    public interface RezeptGeprueft extends Serializable {
+    	@Value.Parameter UUID bestellungId();
+        @Value.Parameter boolean erfolgreich();    	
+    }
+
 	@JsonSerialize
     @Value.Immutable
     public interface BereiteRezeptZu extends Serializable {
@@ -51,5 +60,12 @@ public class BaristaMessages {
     	@Value.Parameter String name();
     }
 
+    @JsonSerialize
+    @Value.Immutable
+    public interface RezeptZubereitet extends Serializable {
+    	@Value.Parameter UUID bestellungId();
+        @Value.Parameter boolean erfolgreich();    	
+    }
+    
 	// Events (Beschreibt den Fakt)
 }
